@@ -1,4 +1,3 @@
--- AIMS Supabase activation script
 create extension if not exists pgcrypto;
 
 create table if not exists users (
