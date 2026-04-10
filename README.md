@@ -6,6 +6,13 @@ A full suite of agentic employees to power your business.
 PORT=3131 npm start
 ```
 
+## Project structure
+- `aims.js`: thin entrypoint.
+- `src/app.js`: app bootstrap and route registration.
+- `src/lib/*`: reusable helpers (auth/session, rendering, Supabase client, utility functions).
+- `src/routes/*`: route groups split by concern (public, auth, member, admin CMS).
+- `public/`: static files.
+
 ## Supabase activation
 This project uses Supabase as persistent storage.
 
