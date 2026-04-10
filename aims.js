@@ -12,48 +12,23 @@ app.use(express.json());
 app.use('/static', express.static(path.join(__dirname, 'public')));
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://uxxfyiukhlsahcyszutt.supabase.co';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGZ5aXVraGxzYWhjeXN6dXR0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTgyNTYwNCwiZXhwIjoyMDYxNDAxNjA0fQ.sqHGHO-5cyYrwFJUeGlWFBXScO44dRJfE-savaPGDW0';
+const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY || 'sb_secret_Y2wtC4rtlqWwznZGZy2Yig_hF2OvjTl';
+const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_Bk9F7ZSgNM_Z86OZcYPDQw_AnnRjn2m';
 
 const sessions = new Map();
 const money = (n) => Number(n || 0).toFixed(2);
 const uuid = () => crypto.randomUUID();
 const nowISO = () => new Date().toISOString();
-const addDaysISO = (dateISO, days) => new Date(new Date(dateISO).getTime() + days * 86400000).toISOString();
+const addDaysISO = (dateISO, days) => new Date(new Date(dateISO).getTime() + Number(days) * 86400000).toISOString();
 const next5s = () => new Date(Date.now() + 5000).toISOString();
 
-const plans = [
-  { price: 50, duration_days: 7, shares: 50, bonus_pct: 0, discount_pct: 0, label: '1 Week' },
-  { price: 200, duration_days: 30, shares: 105, bonus_pct: 5, discount_pct: 0, label: '1 Month' },
-  { price: 500, duration_days: 90, shares: 660, bonus_pct: 10, discount_pct: 15, label: '3 Months' },
-  { price: 1000, duration_days: 180, shares: 1380, bonus_pct: 15, discount_pct: 15, label: '6 Months' },
-  { price: 1920, duration_days: 365, shares: 2880, bonus_pct: 20, discount_pct: 20, label: '1 Year' },
-  { price: 3840, duration_days: 730, shares: 6000, bonus_pct: 25, discount_pct: 20, label: '2 Years' },
-  { price: 5400, duration_days: 1095, shares: 9360, bonus_pct: 30, discount_pct: 25, label: '3 Years' },
-  { price: 9000, duration_days: 1825, shares: 16800, bonus_pct: 40, discount_pct: 25, label: '5 Years' },
-  { price: 16800, duration_days: 3650, shares: 36000, bonus_pct: 50, discount_pct: 30, label: '1 Decade' }
-];
-
-const defaultRoles = [
-  ['Marketing Person', 0, 'Top-rated growth engine for campaign strategy and lead conversion.', true],
-  ['Sales Closer AI', 149, 'Closes high-intent leads with objection-handling scripts.', false],
-  ['Customer Support Agent', 79, '24/7 support triage and response handling.', false],
-  ['Social Media Strategist', 99, 'Plans content calendars and growth loops.', false],
-  ['HR Screening Assistant', 59, 'Screens and ranks candidates automatically.', false],
-  ['Finance Ops Assistant', 129, 'Tracks invoices, expenses, and reconciliation.', false],
-  ['SEO Content Agent', 89, 'Builds SEO briefs and optimized drafts.', false],
-  ['Outbound SDR Agent', 119, 'Runs prospecting and outreach workflows.', false],
-  ['Operations Coordinator', 109, 'Keeps SOP tasks and team automation moving.', false],
-  ['Project Manager AI', 139, 'Manages sprint cadence and delivery updates.', false],
-  ['Legal Intake Assistant', 169, 'Collects intake and drafts initial legal docs.', false],
-  ['Ecommerce Merchandiser', 95, 'Optimizes listings, bundles, and promotions.', false],
-];
-
-async function sb(path, options = {}) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+async function sb(pathname, options = {}) {
+  const key = options.usePublishable ? SUPABASE_PUBLISHABLE_KEY : SUPABASE_SECRET_KEY;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${pathname}`, {
     method: options.method || 'GET',
     headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      apikey: key,
+      Authorization: `Bearer ${key}`,
       'Content-Type': 'application/json',
       Prefer: options.prefer || 'return=representation'
     },
@@ -64,11 +39,7 @@ async function sb(path, options = {}) {
   return t ? JSON.parse(t) : [];
 }
 
-async function one(path) { const rows = await sb(path); return rows[0] || null; }
-async function ensureSeedData() {
-  await sb('users', { method: 'POST', body: [{ email: 'aloycwl@gmail.com', password: 'Password123', referral_code: 'ALOYCWL', is_admin: true, total_subscribed: 0, total_earned: 0, share_balance: 0, wallet_usdt: 0, openclaw_ends_at: nowISO() }], prefer: 'resolution=ignore-duplicates,return=minimal' });
-  await sb('roles', { method: 'POST', body: defaultRoles.map(([name, monthly_price, capabilities, popular]) => ({ name, monthly_price, capabilities, popular })), prefer: 'resolution=ignore-duplicates,return=minimal' });
-}
+async function one(pathname) { const rows = await sb(pathname); return rows[0] || null; }
 
 function nav(user) {
   return `<nav><a href='/'>AIMS</a><a href='/deploy'>1-Click Deploy</a><a href='/staffing'>AI Staffing</a><a href='/referrals'>Referral Model</a>${user ? `<a href='/dashboard'>Dashboard</a><a href='/logout'>Logout</a>${user.is_admin ? `<a href='/admin'>Admin</a>` : ''}` : `<a href='/login'>Login</a><a href='/register'>Register</a>`}</nav>`;
@@ -91,7 +62,7 @@ async function requireAuth(req, res, next) {
   } catch (e) { res.status(500).send(e.message); }
 }
 const eligible = (u) => Number(u.total_earned) < Number(u.total_subscribed) * 2;
-const calcShares = (p) => Math.floor(p.shares * (1 + p.bonus_pct / 100));
+const calcShares = (plan) => Math.floor(Number(plan.shares) * (1 + Number(plan.bonus_pct) / 100));
 const randomIP = () => `${10 + Math.floor(Math.random() * 180)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
 
 async function uplineChain(user) {
@@ -100,7 +71,8 @@ async function uplineChain(user) {
   while (current.referred_by) {
     const up = await one(`users?referral_code=eq.${encodeURIComponent(current.referred_by)}&select=*`);
     if (!up) break;
-    chain.push(up); current = up;
+    chain.push(up);
+    current = up;
   }
   return chain;
 }
@@ -148,40 +120,41 @@ app.get('/logout', (req, res) => { res.setHeader('Set-Cookie', 'sid=; Max-Age=0;
 
 app.get('/deploy', async (req, res) => {
   const user = await currentUser(req);
+  const plans = await sb('plans?select=*&order=price.asc');
   const rows = plans.map(p => `<tr><td>$${p.price}</td><td>${p.label}</td><td>${p.shares}</td><td>+${p.bonus_pct}%</td><td>${p.discount_pct}%</td><td><a class='btn small' href='/pay/${p.price}'>Choose</a></td></tr>`).join('');
   res.send(page('Deploy', `<section class='panel'><h2>OpenClaw 1-Click Deploy</h2><p>Select a plan to simulate payment and instant provisioning orchestration.</p><table><tr><th>Price</th><th>Duration</th><th>Shares</th><th>Bonus</th><th>Discount</th><th></th></tr>${rows}</table></section>`, user));
 });
 
 app.get('/pay/:price', requireAuth, async (req, res) => {
-  const p = plans.find(x => x.price === Number(req.params.price));
+  const p = await one(`plans?price=eq.${Number(req.params.price)}&select=*`);
   if (!p) return res.status(404).send('Plan not found');
   res.send(page('Payment', `<section class='panel narrow'><h2>Demo Payment: $${p.price}</h2><p>${p.label} subscription</p><form method='post'><label>Card Number</label><input name='card' required/><label>Name on Card</label><input name='name' required/><label>CVV</label><input name='cvv' required/><button>Pay & Deploy</button></form><p class='muted'>This is a simulation. No real card data is processed.</p></section>`, req.user));
 });
 
 app.post('/pay/:price', requireAuth, async (req, res) => {
   try {
-    const p = plans.find(x => x.price === Number(req.params.price));
+    const p = await one(`plans?price=eq.${Number(req.params.price)}&select=*`);
     if (!p) return res.status(404).send('Plan not found');
 
     const buyer = await one(`users?id=eq.${req.user.id}&select=*`);
-    const total_subscribed = Number(buyer.total_subscribed) + p.price;
+    const total_subscribed = Number(buyer.total_subscribed) + Number(p.price);
     const share_balance = Number(buyer.share_balance) + calcShares(p);
     const baseDate = new Date(buyer.openclaw_ends_at) > new Date() ? buyer.openclaw_ends_at : nowISO();
     const openclaw_ends_at = addDaysISO(baseDate, p.duration_days);
 
     await sb(`users?id=eq.${buyer.id}`, { method: 'PATCH', body: { total_subscribed, share_balance, openclaw_ends_at } });
-    await sb('subscriptions', { method: 'POST', body: [{ user_id: buyer.id, price: p.price, duration_days: p.duration_days, shares_granted: calcShares(p), status: 'provisioning', provision_at: next5s(), instance_ip: null, telegram_id: null, created_at: nowISO() }] });
+    await sb('subscriptions', { method: 'POST', body: [{ user_id: buyer.id, plan_id: p.id, price: p.price, duration_days: p.duration_days, shares_granted: calcShares(p), status: 'provisioning', provision_at: next5s(), instance_ip: null, telegram_id: null, created_at: nowISO() }] });
 
     if (buyer.referred_by) {
       const direct = await one(`users?referral_code=eq.${encodeURIComponent(buyer.referred_by)}&select=*`);
-      if (direct) await creditReward(direct, buyer.id, p.price * 0.5, 'direct', '50% direct referral reward');
+      if (direct) await creditReward(direct, buyer.id, Number(p.price) * 0.5, 'direct', '50% direct referral reward');
     }
 
     const chain = (await uplineChain(buyer)).filter(eligible);
     const totalShares = chain.reduce((sum, u) => sum + Number(u.share_balance), 0);
     if (totalShares > 0) {
       for (const upline of chain) {
-        const portion = (p.price * 0.2) * (Number(upline.share_balance) / totalShares);
+        const portion = (Number(p.price) * 0.2) * (Number(upline.share_balance) / totalShares);
         await creditReward(upline, buyer.id, portion, 'group', '20% group upline pool');
       }
     }
@@ -195,7 +168,6 @@ app.get('/staffing', async (req, res) => {
   const cards = roles.map(r => `<article class='card role'><h3>${r.name}${r.popular ? `<span class='tag'>Most Popular</span>` : ''}</h3><p>${r.capabilities}</p><p class='price'>${Number(r.monthly_price) === 0 ? 'Free' : `$${r.monthly_price}/mo`}</p><a class='btn small' href='/staffing/${r.id}'>Hire now</a></article>`).join('');
   res.send(page('Staffing', `<section class='panel'><h2>AI Agent Staffing</h2><p>Deploy specialized digital workers with standardized onboarding instructions.</p><div class='grid'>${cards}</div></section>`, user));
 });
-
 app.get('/staffing/:id', async (req, res) => {
   const user = await currentUser(req);
   const role = await one(`roles?id=eq.${req.params.id}&select=*`);
@@ -218,9 +190,9 @@ app.get('/dashboard', requireAuth, async (req, res) => {
       }
     }
 
-    const subs = await sb(`subscriptions?user_id=eq.${user.id}&select=*&order=created_at.desc`);
+    const subs = await sb(`subscriptions?user_id=eq.${user.id}&select=*,plans(label)&order=created_at.desc`);
     const rewards = await sb(`rewards?user_id=eq.${user.id}&select=*&order=created_at.desc&limit=12`);
-    const subRows = subs.map(s => `<tr><td>$${s.price}</td><td>${s.status}</td><td>${s.instance_ip || '-'}</td><td>${s.telegram_id || `<form method='post' action='/subscription/${s.id}/telegram' class='inline'><input name='telegram_id' placeholder='Telegram ID' required/><button class='small'>Save</button></form>`}</td></tr>`).join('');
+    const subRows = subs.map(s => `<tr><td>${s.plans?.label || '$'+s.price}</td><td>${s.status}</td><td>${s.instance_ip || '-'}</td><td>${s.telegram_id || `<form method='post' action='/subscription/${s.id}/telegram' class='inline'><input name='telegram_id' placeholder='Telegram ID' required/><button class='small'>Save</button></form>`}</td></tr>`).join('');
     const rewardRows = rewards.map(r => `<li>${new Date(r.created_at).toLocaleString()} — ${r.type.toUpperCase()} $${money(r.amount)} (${r.note})</li>`).join('');
 
     res.send(page('Dashboard', `<section class='panel'><h2>Member Dashboard</h2><div class='stats'><div><span>Total Subscribed</span><strong>$${money(user.total_subscribed)}</strong></div><div><span>Total Earned</span><strong>$${money(user.total_earned)}</strong></div><div><span>Wallet (USDT)</span><strong>${money(user.wallet_usdt)}</strong></div><div><span>Shares</span><strong>${user.share_balance}</strong></div></div><p>Eligibility: <b>${eligible(user) ? 'Eligible' : 'Capped (purchase new plan to reactivate)'}</b></p><p>Referral Link: <code>http://localhost:3000/register?ref=${user.referral_code}</code></p></section><section class='panel'><h3>OpenClaw Instances</h3><table><tr><th>Plan</th><th>Status</th><th>Instance IP</th><th>Telegram</th></tr>${subRows || '<tr><td colspan="4">No subscriptions yet.</td></tr>'}</table></section><section class='panel'><h3>Recent Rewards</h3><ul>${rewardRows || '<li>No rewards yet.</li>'}</ul></section><section class='panel narrow'><h3>Withdraw (Demo BSC USDT)</h3><form method='post' action='/withdraw'><label>Wallet Address</label><input name='address' required/><label>Amount</label><input name='amount' type='number' step='0.01' required/><button>Submit Request</button></form></section>`, user));
@@ -265,9 +237,4 @@ app.post('/admin/roles/:id/delete', requireAuth, async (req, res) => {
 });
 
 const port = process.env.PORT || 3000;
-ensureSeedData().then(() => {
-  app.listen(port, () => console.log(`AIMS app running on http://localhost:${port}`));
-}).catch((e) => {
-  console.error('Boot failed:', e.message);
-  process.exit(1);
-});
+app.listen(port, () => console.log(`AIMS app running on http://localhost:${port}`));
