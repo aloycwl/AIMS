@@ -16,7 +16,6 @@ pids/
 
 # Environment variables
 .env
-.env.*
 
 # Build / cache
 dist/
