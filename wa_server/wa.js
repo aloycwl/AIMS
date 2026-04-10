@@ -13,7 +13,7 @@ app.use(express.json())
 
 const { version } = await fetchLatestBaileysVersion()
 
-let sock = makeWASocket({ auth: state, version }), currentQR = null, isReady = false
+let sock = makeWASocket({ auth: state, version }), currentQR = null, currentPairingCode = null, isReady = false
 let job = {
     running: false,
     total: 0,
@@ -31,16 +31,25 @@ const MESSAGES = [
 sock.ev.on("creds.update", saveCreds)
 
 const startSock = () => {
-    sock.ev.on("connection.update", async ({ qr, connection, lastDisconnect }) => {
-        if (qr) currentQR = qr
+    sock.ev.on("connection.update", async ({ qr, connection, lastDisconnect, pairingCode }) => {
+        if (qr) {
+            currentQR = qr
+            currentPairingCode = null
+        }
+        if (pairingCode) {
+            currentPairingCode = pairingCode
+        }
 
         if (connection === "open") {
             isReady = true
             currentQR = null
+            currentPairingCode = null
         }
 
         if (connection === "close") {
             isReady = false
+            currentQR = null
+            currentPairingCode = null
             const shouldReconnect = (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut)
             if (shouldReconnect) {
                 sock = makeWASocket({ auth: state, version })
@@ -48,8 +57,119 @@ const startSock = () => {
             }
         }
     })
+    
+    // Request pairing code after connection - only if we have credentials
+    // NOTE: For fresh pairing, call /pairing-code with phone number
+    if (!isReady && !currentQR && !currentPairingCode && state.creds.me) {
+        setTimeout(async () => {
+            if (!isReady && !currentPairingCode && state.creds.me?.id) {
+                try {
+                    const phone = state.creds.me.id.split(':')[0].split('@')[0]
+                    const code = await sock.requestPairingCode(phone)
+                    currentPairingCode = code
+                    console.log("Pairing code:", code)
+                } catch (e) {
+                    console.log("Could not request pairing code:", e.message)
+                }
+            }
+        }, 3000)
+    }
 }
 startSock()
+
+// -------------------- REAUTH (Clear session and get fresh pairing code) --------------------
+app.post("/reauth", async (req, res) => {
+    try {
+        // Disconnect if connected
+        if (sock) {
+            try { await sock.logout() } catch (e) { }
+        }
+        
+        isReady = false
+        currentQR = null
+        currentPairingCode = null
+        
+        // Clear session files completely
+        const sessionDir = "./session"
+        if (fs.existsSync(sessionDir)) {
+            fs.rmSync(sessionDir, { recursive: true })
+        }
+        
+        // Reinitialize auth state with fresh session
+        const freshAuth = await useMultiFileAuthState("./session")
+        sock = makeWASocket({ auth: freshAuth.state, version, printQRInTerminal: false })
+        sock.ev.on("creds.update", freshAuth.saveCreds)
+        
+        // Set up connection handler
+        sock.ev.on("connection.update", async ({ qr, connection, lastDisconnect, pairingCode }) => {
+            if (qr) {
+                currentQR = qr
+                currentPairingCode = null
+                await QRCode.toFile(`${DEFAULT_WS}/qr.png`, qr)
+            }
+            if (pairingCode) {
+                currentPairingCode = pairingCode
+            }
+            if (connection === "open") {
+                isReady = true
+                currentQR = null
+                currentPairingCode = null
+            }
+            if (connection === "close") {
+                isReady = false
+                currentQR = null
+                currentPairingCode = null
+            }
+        })
+        
+        res.json({ success: true, message: "Session cleared, call /auth with phone number to get pairing code" })
+    } catch (e) {
+        res.status(500).json({ error: e.message })
+    }
+})
+
+// -------------------- REQUEST PAIRING CODE --------------------
+app.post("/pairing-code", async (req, res) => {
+    try {
+        const phoneNumber = req.body.phone
+        if (!phoneNumber) {
+            return res.status(400).json({ error: "Phone number required in format: 6591885794 (no + sign)" })
+        }
+        
+        // Clean phone number - remove + and any spaces/dashes
+        const cleanNumber = phoneNumber.replace(/[+\s\-]/g, "")
+        
+        const code = await sock.requestPairingCode(cleanNumber)
+        currentPairingCode = code
+        
+        console.log("Pairing code for", cleanNumber, ":", code)
+        res.json({ success: true, pairingCode: code, phone: cleanNumber })
+    } catch (e) {
+        res.status(500).json({ error: e.message })
+    }
+})
+
+// -------------------- LOGOUT --------------------
+app.post("/logout", async (req, res) => {
+    try {
+        await sock.logout()
+        isReady = false
+        currentQR = null
+        
+        // Clear session files
+        const sessionDir = "./session"
+        if (fs.existsSync(sessionDir)) {
+            fs.rmSync(sessionDir, { recursive: true })
+        }
+        currentQR = null
+        currentPairingCode = null
+        
+        console.log("Logged out, session cleared")
+        res.json({ success: true, message: "logged out, session cleared" })
+    } catch (e) {
+        res.status(500).json({ error: e.message })
+    }
+})
 
 // -------------------- AUTH --------------------
 app.get("/auth", async (req, res) => {
@@ -58,10 +178,21 @@ app.get("/auth", async (req, res) => {
     if (currentQR) {
         const path = `${DEFAULT_WS}/qr.png`
         await QRCode.toFile(path, currentQR)
-        return res.json({ authenticated: false, qr: path })
+        return res.json({ authenticated: false, qr: path, pairingCode: currentPairingCode })
     }
 
-    return res.json({ authenticated: false, qr: null })
+    if (currentPairingCode) {
+        return res.json({ authenticated: false, qr: null, pairingCode: currentPairingCode })
+    }
+
+    // Request pairing code if not already
+    try {
+        const code = await sock.requestPairingCode()
+        currentPairingCode = code
+        return res.json({ authenticated: false, qr: null, pairingCode: code })
+    } catch (e) {
+        return res.json({ authenticated: false, qr: null, pairingCode: currentPairingCode, message: "Waiting for pairing code..." })
+    }
 })
 
 // -------------------- NORMALIZE --------------------

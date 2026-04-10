@@ -2,6 +2,7 @@ import express from 'express';
 import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import 'dotenv/config'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,9 +12,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use('/static', express.static(path.join(__dirname, 'public')));
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://uxxfyiukhlsahcyszutt.supabase.co';
-const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY || 'sb_secret_Y2wtC4rtlqWwznZGZy2Yig_hF2OvjTl';
-const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_Bk9F7ZSgNM_Z86OZcYPDQw_AnnRjn2m';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const sessions = new Map();
 const money = (n) => Number(n || 0).toFixed(2);
@@ -23,12 +23,11 @@ const addDaysISO = (dateISO, days) => new Date(new Date(dateISO).getTime() + Num
 const next5s = () => new Date(Date.now() + 5000).toISOString();
 
 async function sb(pathname, options = {}) {
-  const key = options.usePublishable ? SUPABASE_PUBLISHABLE_KEY : SUPABASE_SECRET_KEY;
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${pathname}`, {
     method: options.method || 'GET',
     headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
       'Content-Type': 'application/json',
       Prefer: options.prefer || 'return=representation'
     },
@@ -192,7 +191,7 @@ app.get('/dashboard', requireAuth, async (req, res) => {
 
     const subs = await sb(`subscriptions?user_id=eq.${user.id}&select=*,plans(label)&order=created_at.desc`);
     const rewards = await sb(`rewards?user_id=eq.${user.id}&select=*&order=created_at.desc&limit=12`);
-    const subRows = subs.map(s => `<tr><td>${s.plans?.label || '$'+s.price}</td><td>${s.status}</td><td>${s.instance_ip || '-'}</td><td>${s.telegram_id || `<form method='post' action='/subscription/${s.id}/telegram' class='inline'><input name='telegram_id' placeholder='Telegram ID' required/><button class='small'>Save</button></form>`}</td></tr>`).join('');
+    const subRows = subs.map(s => `<tr><td>${s.plans?.label || '$' + s.price}</td><td>${s.status}</td><td>${s.instance_ip || '-'}</td><td>${s.telegram_id || `<form method='post' action='/subscription/${s.id}/telegram' class='inline'><input name='telegram_id' placeholder='Telegram ID' required/><button class='small'>Save</button></form>`}</td></tr>`).join('');
     const rewardRows = rewards.map(r => `<li>${new Date(r.created_at).toLocaleString()} — ${r.type.toUpperCase()} $${money(r.amount)} (${r.note})</li>`).join('');
 
     res.send(page('Dashboard', `<section class='panel'><h2>Member Dashboard</h2><div class='stats'><div><span>Total Subscribed</span><strong>$${money(user.total_subscribed)}</strong></div><div><span>Total Earned</span><strong>$${money(user.total_earned)}</strong></div><div><span>Wallet (USDT)</span><strong>${money(user.wallet_usdt)}</strong></div><div><span>Shares</span><strong>${user.share_balance}</strong></div></div><p>Eligibility: <b>${eligible(user) ? 'Eligible' : 'Capped (purchase new plan to reactivate)'}</b></p><p>Referral Link: <code>http://localhost:${port}/register?ref=${user.referral_code}</code></p></section><section class='panel'><h3>OpenClaw Instances</h3><table><tr><th>Plan</th><th>Status</th><th>Instance IP</th><th>Telegram</th></tr>${subRows || '<tr><td colspan="4">No subscriptions yet.</td></tr>'}</table></section><section class='panel'><h3>Recent Rewards</h3><ul>${rewardRows || '<li>No rewards yet.</li>'}</ul></section><section class='panel narrow'><h3>Withdraw (Demo BSC USDT)</h3><form method='post' action='/withdraw'><label>Wallet Address</label><input name='address' required/><label>Amount</label><input name='amount' type='number' step='0.01' required/><button>Submit Request</button></form></section>`, user));
