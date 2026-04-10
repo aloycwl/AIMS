@@ -5,10 +5,11 @@
   "main": "aims.js",
   "scripts": {
     "start": "node aims.js",
-    "activate": "node activate.js"
+    "activate": "node scripts/activate.js"
   },
   "dependencies": {
     "dotenv": "^17.4.1",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "stripe": "^22.0.1"
   }
 }
