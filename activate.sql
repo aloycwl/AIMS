@@ -36,6 +36,15 @@ create table if not exists roles (
   created_at timestamptz not null default now()
 );
 
+create table if not exists staffing_role_page_content (
+  key text primary key,
+  checklist_title text not null,
+  checklist_items jsonb not null default '[]'::jsonb,
+  terms_title text not null,
+  billing_note text not null,
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists subscriptions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references users(id) on delete cascade,
@@ -106,3 +115,12 @@ insert into roles (name, monthly_price, capabilities, popular) values
 ('Legal Intake Assistant', 169, 'Collects intake and drafts initial legal docs.', false),
 ('Ecommerce Merchandiser', 95, 'Optimizes listings, bundles, and promotions.', false)
 on conflict (name) do nothing;
+
+insert into staffing_role_page_content (key, checklist_title, checklist_items, terms_title, billing_note, updated_at) values
+('default', 'Setup checklist', '["Create your Telegram access channel.","Upload SOP + KPIs in dashboard notes.","Assign data sources and response guardrails.","Activate QA review mode for the first 72 hours."]'::jsonb, 'Commercial terms', 'Billing: Demo-only for this environment.', now())
+on conflict (key) do update set
+  checklist_title = excluded.checklist_title,
+  checklist_items = excluded.checklist_items,
+  terms_title = excluded.terms_title,
+  billing_note = excluded.billing_note,
+  updated_at = excluded.updated_at;
