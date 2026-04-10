@@ -73,10 +73,13 @@ create table if not exists subscriptions (
   shares_granted bigint not null,
   status text not null,
   provision_at timestamptz,
+  expires_at timestamptz,
   instance_ip text,
   telegram_id text,
   created_at timestamptz not null default now()
 );
+
+alter table subscriptions add column if not exists expires_at timestamptz;
 
 create table if not exists rewards (
   id uuid primary key default gen_random_uuid(),
