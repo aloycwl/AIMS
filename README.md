@@ -11,6 +11,7 @@ PORT=3131 npm start
 - `src/app.js`: app bootstrap and route registration.
 - `src/lib/*`: reusable helpers (auth/session, rendering, Supabase client, utility functions).
 - `src/routes/*`: route groups split by concern (public, auth, member, admin CMS).
+- Admin CMS staffing detail content is stored per role (`staffing/:id`) with a role-specific record in `staffing_role_page_content`.
 - `public/`: static files.
 
 ## Supabase activation

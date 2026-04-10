@@ -28,7 +28,8 @@ export function registerPublicRoutes(app, ctx) {
     const role = await one(`roles?id=eq.${req.params.id}&select=*`);
     if (!role) return res.status(404).send('Role not found');
 
-    const cms = await one('staffing_role_page_content?key=eq.default&select=*');
+    const cms = await one(`staffing_role_page_content?role_id=eq.${req.params.id}&select=*`)
+      || await one('staffing_role_page_content?key=eq.default&select=*');
     const checklistTitle = cms?.checklist_title || 'Setup checklist';
     const checklistItems = Array.isArray(cms?.checklist_items) && cms.checklist_items.length
       ? cms.checklist_items
