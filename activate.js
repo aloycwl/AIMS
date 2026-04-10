@@ -7,66 +7,92 @@ const __dirname = path.dirname(__filename);
 const sql = fs.readFileSync(path.join(__dirname, 'activate.sql'), 'utf8');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://uxxfyiukhlsahcyszutt.supabase.co';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGZ5aXVraGxzYWhjeXN6dXR0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTgyNTYwNCwiZXhwIjoyMDYxNDAxNjA0fQ.sqHGHO-5cyYrwFJUeGlWFBXScO44dRJfE-savaPGDW0';
+const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY || 'sb_secret_Y2wtC4rtlqWwznZGZy2Yig_hF2OvjTl';
+const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN || ''; // Optional PAT for Management API
+const SUPABASE_SQL_ENDPOINT = process.env.SUPABASE_SQL_ENDPOINT || ''; // Optional direct SQL endpoint override
 
 const authHeaders = {
-  apikey: SUPABASE_SERVICE_ROLE_KEY,
-  Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
+  apikey: SUPABASE_SECRET_KEY,
+  Authorization: `Bearer ${SUPABASE_SECRET_KEY}`
 };
 
-async function tryEndpoint(url, options) {
+const getProjectRef = () => {
+  try { return new URL(SUPABASE_URL).hostname.split('.')[0]; }
+  catch { return ''; }
+};
+
+async function request(name, url, options) {
   const res = await fetch(url, options);
   const text = await res.text();
-  return { ok: res.ok, status: res.status, text };
+  return { name, ok: res.ok, status: res.status, text };
 }
 
 async function run() {
-  const attempts = [
-    {
-      name: 'SQL API /sql/v1',
-      call: () => tryEndpoint(`${SUPABASE_URL}/sql/v1`, {
-        method: 'POST',
-        headers: { ...authHeaders, 'Content-Type': 'application/sql' },
-        body: sql
-      })
-    },
-    {
-      name: 'SQL API /pg/v1/query',
-      call: () => tryEndpoint(`${SUPABASE_URL}/pg/v1/query`, {
-        method: 'POST',
-        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: sql })
-      })
-    },
-    {
-      name: 'RPC exec_sql',
-      call: () => tryEndpoint(`${SUPABASE_URL}/rest/v1/rpc/exec_sql`, {
-        method: 'POST',
-        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sql })
-      })
-    }
-  ];
+  const attempts = [];
+
+  if (SUPABASE_SQL_ENDPOINT) {
+    attempts.push(() => request('Custom SUPABASE_SQL_ENDPOINT', SUPABASE_SQL_ENDPOINT, {
+      method: 'POST',
+      headers: { ...authHeaders, 'Content-Type': 'application/sql' },
+      body: sql
+    }));
+  }
+
+  // Direct project SQL API endpoints (some projects/plans disable these).
+  attempts.push(() => request('Project SQL API /sql/v1', `${SUPABASE_URL}/sql/v1`, {
+    method: 'POST',
+    headers: { ...authHeaders, 'Content-Type': 'application/sql' },
+    body: sql
+  }));
+  attempts.push(() => request('Project SQL API /pg/v1/query', `${SUPABASE_URL}/pg/v1/query`, {
+    method: 'POST',
+    headers: { ...authHeaders, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: sql })
+  }));
+
+  // Works only if custom function exists already.
+  attempts.push(() => request('PostgREST RPC /rest/v1/rpc/exec_sql', `${SUPABASE_URL}/rest/v1/rpc/exec_sql`, {
+    method: 'POST',
+    headers: { ...authHeaders, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sql })
+  }));
+
+  // Supabase Management API fallback (requires personal access token, not service role key).
+  const ref = getProjectRef();
+  if (SUPABASE_ACCESS_TOKEN && ref) {
+    attempts.push(() => request('Management API /v1/projects/{ref}/database/query', `https://api.supabase.com/v1/projects/${ref}/database/query`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${SUPABASE_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ query: sql })
+    }));
+  }
 
   const results = [];
   for (const attempt of attempts) {
     try {
-      const r = await attempt.call();
-      results.push({ endpoint: attempt.name, ...r });
+      const r = await attempt();
+      results.push(r);
       if (r.ok) {
-        console.log(`Activation completed via ${attempt.name}.`);
+        console.log(`Activation completed via: ${r.name}`);
         return;
       }
     } catch (e) {
-      results.push({ endpoint: attempt.name, ok: false, status: 0, text: e.message });
+      results.push({ name: 'network/runtime error', ok: false, status: 0, text: e.message });
     }
   }
 
-  console.error('Activation failed for all API endpoints.');
+  console.error('Activation failed for all available endpoints.');
   for (const r of results) {
-    console.error(`- ${r.endpoint} -> ${r.status}: ${r.text}`);
+    console.error(`- ${r.name} -> ${r.status}: ${r.text}`);
   }
-  console.error('\nFallback: open Supabase SQL Editor and run ./activate.sql manually.');
+
+  console.error('\nWhy this happens: your project may not expose SQL HTTP endpoints, and exec_sql RPC is not installed yet.');
+  console.error('Fix options:');
+  console.error('1) Set SUPABASE_ACCESS_TOKEN (personal access token) and rerun npm run activate.');
+  console.error('2) Or open Supabase SQL Editor and run ./activate.sql manually once.');
   process.exit(1);
 }
 
