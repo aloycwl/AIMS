@@ -2,7 +2,7 @@ import { page } from '../lib/render.js';
 import { nowISO } from '../lib/utils.js';
 
 export function registerAuthRoutes(app, ctx) {
-  const { one, sb, login, logout } = ctx;
+  const { one, sb, login, logout, requireAuth } = ctx;
 
   app.get('/register', async (req, res) => {
     res.send(page('Register', `<section class='panel'><h2>Create Account</h2><p>Use any email for test onboarding; verification is intentionally disabled.</p><form method='post'><label>Email</label><input name='email' required/><label>Password</label><input type='password' name='password' required/><label>Referral Code (optional)</label><input name='ref' value='${req.query.ref || ''}'/><button>Create account</button></form></section>`));
@@ -55,5 +55,29 @@ export function registerAuthRoutes(app, ctx) {
   app.get('/logout', (req, res) => {
     logout(res);
     res.redirect('/');
+  });
+
+  app.get('/profile', requireAuth, async (req, res) => {
+    const user = await one(`users?id=eq.${req.user.id}&select=*`);
+    res.send(page('Profile', `<section class='panel narrow'><h2>Profile</h2><p><b>Email:</b> ${user.email}</p><p><b>Referral code:</b> ${user.referral_code}</p><p><b>Joined:</b> ${new Date(user.created_at).toLocaleDateString()}</p></section><section class='panel narrow' id='change-password'><h3>Change Password</h3><form method='post' action='/profile/password'><label>Current Password</label><input type='password' name='current_password' required/><label>New Password</label><input type='password' name='new_password' minlength='8' required/><label>Confirm New Password</label><input type='password' name='confirm_password' minlength='8' required/><button>Update Password</button></form></section>`, user));
+  });
+
+  app.post('/profile/password', requireAuth, async (req, res) => {
+    const user = await one(`users?id=eq.${req.user.id}&select=*`);
+    const { current_password: currentPassword, new_password: newPassword, confirm_password: confirmPassword } = req.body;
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.send(page('Change Password', `<section class='panel narrow'><h2>Missing fields</h2><a class='btn' href='/profile#change-password'>Back</a></section>`, user));
+    }
+    if (user.password !== currentPassword) {
+      return res.send(page('Change Password', `<section class='panel narrow'><h2>Current password is incorrect</h2><a class='btn' href='/profile#change-password'>Try again</a></section>`, user));
+    }
+    if (newPassword.length < 8) {
+      return res.send(page('Change Password', `<section class='panel narrow'><h2>New password must be at least 8 characters</h2><a class='btn' href='/profile#change-password'>Try again</a></section>`, user));
+    }
+    if (newPassword !== confirmPassword) {
+      return res.send(page('Change Password', `<section class='panel narrow'><h2>New password confirmation does not match</h2><a class='btn' href='/profile#change-password'>Try again</a></section>`, user));
+    }
+    await sb(`users?id=eq.${user.id}`, { method: 'PATCH', body: { password: newPassword } });
+    res.send(page('Change Password', `<section class='panel narrow'><h2>Password updated successfully</h2><a class='btn' href='/profile'>Back to profile</a></section>`, user));
   });
 }
