@@ -37,8 +37,8 @@ create table if not exists roles (
 
 create table if not exists staffing_role_page_content (
   id uuid default gen_random_uuid(),
-  role_id uuid references roles(id) on delete cascade,
-  key text,
+  role_id uuid unique references roles(id) on delete cascade,
+  key text unique,
   checklist_title text not null,
   checklist_items jsonb not null default '[]'::jsonb,
   terms_title text not null,
@@ -50,10 +50,19 @@ alter table staffing_role_page_content add column if not exists id uuid default 
 alter table staffing_role_page_content add column if not exists role_id uuid references roles(id) on delete cascade;
 alter table staffing_role_page_content add column if not exists key text;
 
-create unique index if not exists idx_staffing_role_page_content_role_id_unique
-  on staffing_role_page_content(role_id) where role_id is not null;
-create unique index if not exists idx_staffing_role_page_content_key_unique
-  on staffing_role_page_content(key) where key is not null;
+do $$
+begin
+  alter table staffing_role_page_content add constraint staffing_role_page_content_role_id_unique unique (role_id);
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter table staffing_role_page_content add constraint staffing_role_page_content_key_unique unique (key);
+exception
+  when duplicate_object then null;
+end $$;
 
 create table if not exists subscriptions (
   id uuid primary key default gen_random_uuid(),
