@@ -52,16 +52,44 @@ export function registerMemberRoutes(app, ctx) {
       if (!plan) return res.status(404).send('Plan not found');
 
       const buyer = await one(`users?id=eq.${req.user.id}&select=*`);
+      const restartingAfterCap = !eligible(buyer);
+      const grantedShares = calcShares(plan);
       const totalSubscribed = Number(buyer.total_subscribed) + Number(plan.price);
-      const shareBalance = Number(buyer.share_balance) + calcShares(plan);
+      const shareBalance = restartingAfterCap ? grantedShares : Number(buyer.share_balance) + grantedShares;
       const baseDate = new Date(buyer.openclaw_ends_at) > new Date() ? buyer.openclaw_ends_at : nowISO();
       const openclawEndsAt = addDaysISO(baseDate, plan.duration_days);
 
       await sb(`users?id=eq.${buyer.id}`, { method: 'PATCH', body: { total_subscribed: totalSubscribed, share_balance: shareBalance, openclaw_ends_at: openclawEndsAt } });
-      await sb('subscriptions', {
-        method: 'POST',
-        body: [{ user_id: buyer.id, plan_id: plan.id, price: plan.price, duration_days: plan.duration_days, shares_granted: calcShares(plan), status: 'provisioning', provision_at: next5s(), instance_ip: null, telegram_id: null, created_at: nowISO() }]
-      });
+      const [activeSub] = await sb(`subscriptions?user_id=eq.${buyer.id}&status=in.(provisioning,provisioned)&order=created_at.desc&limit=1`);
+      if (activeSub) {
+        await sb(`subscriptions?id=eq.${activeSub.id}`, {
+          method: 'PATCH',
+          body: {
+            plan_id: plan.id,
+            price: Number(activeSub.price) + Number(plan.price),
+            duration_days: Number(activeSub.duration_days) + Number(plan.duration_days),
+            shares_granted: shareBalance,
+            expires_at: openclawEndsAt
+          }
+        });
+      } else {
+        await sb('subscriptions', {
+          method: 'POST',
+          body: [{
+            user_id: buyer.id,
+            plan_id: plan.id,
+            price: plan.price,
+            duration_days: plan.duration_days,
+            shares_granted: grantedShares,
+            status: 'provisioning',
+            provision_at: next5s(),
+            expires_at: openclawEndsAt,
+            instance_ip: null,
+            telegram_id: null,
+            created_at: nowISO()
+          }]
+        });
+      }
 
       if (buyer.referred_by) {
         const direct = await one(`users?referral_code=eq.${encodeURIComponent(buyer.referred_by)}&select=*`);
@@ -92,14 +120,20 @@ export function registerMemberRoutes(app, ctx) {
           await sb(`subscriptions?id=eq.${sub.id}`, { method: 'PATCH', body: { status: 'provisioned', instance_ip: randomIP() } });
         }
       }
+      const provisioned = await sb(`subscriptions?user_id=eq.${user.id}&status=eq.provisioned&select=*`);
+      for (const sub of provisioned) {
+        if (sub.expires_at && new Date(sub.expires_at) <= new Date()) {
+          await sb(`subscriptions?id=eq.${sub.id}`, { method: 'PATCH', body: { status: 'expired' } });
+        }
+      }
 
       const subs = await sb(`subscriptions?user_id=eq.${user.id}&select=*,plans(label)&order=created_at.desc`);
       const rewards = await sb(`rewards?user_id=eq.${user.id}&select=*&order=created_at.desc&limit=12`);
-      const subRows = subs.map((s) => `<tr><td>${s.plans?.label || '$' + s.price}</td><td>${s.status}</td><td>${s.instance_ip || '-'}</td><td>${s.telegram_id || `<form method='post' action='/subscription/${s.id}/telegram' class='inline'><input name='telegram_id' placeholder='Telegram ID' required/><button class='small'>Save</button></form>`}</td></tr>`).join('');
+      const subRows = subs.map((s) => `<tr><td>${s.plans?.label || '$' + s.price}</td><td>${s.status}</td><td>${s.instance_ip || '-'}</td><td>${s.expires_at ? new Date(s.expires_at).toLocaleString() : '-'}</td><td>${s.telegram_id || `<form method='post' action='/subscription/${s.id}/telegram' class='inline'><input name='telegram_id' placeholder='Telegram ID' required/><button class='small'>Save</button></form>`}</td></tr>`).join('');
       const rewardRows = rewards.map((r) => `<li>${new Date(r.created_at).toLocaleString()} — ${r.type.toUpperCase()} $${money(r.amount)} (${r.note})</li>`).join('');
       const port = process.env.PORT || 3131;
 
-      res.send(page('Dashboard', `<section class='panel'><h2>Member Dashboard</h2><div class='stats'><div><span>Total Subscribed</span><strong>$${money(user.total_subscribed)}</strong></div><div><span>Total Earned</span><strong>$${money(user.total_earned)}</strong></div><div><span>Wallet (USDT)</span><strong>${money(user.wallet_usdt)}</strong></div><div><span>Shares</span><strong>${user.share_balance}</strong></div></div><p>Eligibility: <b>${eligible(user) ? 'Eligible' : 'Capped (purchase new plan to reactivate)'}</b></p><p>Referral Link: <code>http://localhost:${port}/register?ref=${user.referral_code}</code></p></section><section class='panel'><h3>OpenClaw Instances</h3><table><tr><th>Plan</th><th>Status</th><th>Instance IP</th><th>Telegram</th></tr>${subRows || '<tr><td colspan="4">No subscriptions yet.</td></tr>'}</table></section><section class='panel'><h3>Recent Rewards</h3><ul>${rewardRows || '<li>No rewards yet.</li>'}</ul></section><section class='panel narrow'><h3>Withdraw (Demo BSC USDT)</h3><form method='post' action='/withdraw'><label>Wallet Address</label><input name='address' required/><label>Amount</label><input name='amount' type='number' step='0.01' required/><button>Submit Request</button></form></section>`, user));
+      res.send(page('Dashboard', `<section class='panel'><h2>Member Dashboard</h2><div class='stats'><div><span>Total Subscribed</span><strong>$${money(user.total_subscribed)}</strong></div><div><span>Total Earned</span><strong>$${money(user.total_earned)}</strong></div><div><span>Wallet (USDT)</span><strong>${money(user.wallet_usdt)}</strong></div><div><span>Shares</span><strong>${user.share_balance}</strong></div><div><span>Service Expires</span><strong>${user.openclaw_ends_at ? new Date(user.openclaw_ends_at).toLocaleDateString() : '-'}</strong></div></div><p>Eligibility: <b>${eligible(user) ? 'Eligible' : 'Capped (purchase new plan to reactivate)'}</b></p><p>Referral Link: <code>http://localhost:${port}/register?ref=${user.referral_code}</code></p></section><section class='panel'><h3>OpenClaw Instances</h3><table><tr><th>Plan</th><th>Status</th><th>Instance IP</th><th>Expiry</th><th>Telegram</th></tr>${subRows || '<tr><td colspan="5">No subscriptions yet.</td></tr>'}</table></section><section class='panel'><h3>Recent Rewards</h3><ul>${rewardRows || '<li>No rewards yet.</li>'}</ul></section><section class='panel narrow'><h3>Withdraw (Demo BSC USDT)</h3><form method='post' action='/withdraw'><label>Wallet Address</label><input name='address' required/><label>Amount</label><input name='amount' type='number' step='0.01' required/><button>Submit Request</button></form></section>`, user));
     } catch (e) {
       res.status(500).send(e.message);
     }
