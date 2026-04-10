@@ -1,0 +1,13 @@
+{
+  "name": "aims",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "aims.js",
+  "scripts": {
+    "start": "node aims.js",
+    "activate": "node activate.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
