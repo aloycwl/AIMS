@@ -39,6 +39,7 @@ async function sb(pathname, options = {}) {
 }
 
 async function one(pathname) { const rows = await sb(pathname); return rows[0] || null; }
+const parseLines = (text) => String(text || '').split('\n').map(s => s.trim()).filter(Boolean);
 
 function nav(user) {
   return `<nav><a href='/'>AIMS</a><a href='/deploy'>1-Click Deploy</a><a href='/staffing'>AI Staffing</a><a href='/referrals'>Referral Model</a>${user ? `<a href='/dashboard'>Dashboard</a><a href='/logout'>Logout</a>${user.is_admin ? `<a href='/admin'>Admin</a>` : ''}` : `<a href='/login'>Login</a><a href='/register'>Register</a>`}</nav>`;
@@ -171,7 +172,20 @@ app.get('/staffing/:id', async (req, res) => {
   const user = await currentUser(req);
   const role = await one(`roles?id=eq.${req.params.id}&select=*`);
   if (!role) return res.status(404).send('Role not found');
-  res.send(page(role.name, `<section class='panel'><h2>${role.name}</h2><p>${role.capabilities}</p><div class='two-col'><div><h3>Setup checklist</h3><ol><li>Create your Telegram access channel.</li><li>Upload SOP + KPIs in dashboard notes.</li><li>Assign data sources and response guardrails.</li><li>Activate QA review mode for the first 72 hours.</li></ol></div><div class='info'><h3>Commercial terms</h3><p>Monthly Price: <b>${Number(role.monthly_price) === 0 ? 'Free' : '$' + role.monthly_price}</b></p><p>Billing: Demo-only for this environment.</p></div></div></section>`, user));
+  const cms = await one('staffing_role_page_content?key=eq.default&select=*');
+  const checklistTitle = cms?.checklist_title || 'Setup checklist';
+  const checklistItems = Array.isArray(cms?.checklist_items) && cms.checklist_items.length
+    ? cms.checklist_items
+    : [
+      'Create your Telegram access channel.',
+      'Upload SOP + KPIs in dashboard notes.',
+      'Assign data sources and response guardrails.',
+      'Activate QA review mode for the first 72 hours.'
+    ];
+  const termsTitle = cms?.terms_title || 'Commercial terms';
+  const billingNote = cms?.billing_note || 'Billing: Demo-only for this environment.';
+  const checklistHtml = checklistItems.map(i => `<li>${i}</li>`).join('');
+  res.send(page(role.name, `<section class='panel'><h2>${role.name}</h2><p>${role.capabilities}</p><div class='two-col'><div><h3>${checklistTitle}</h3><ol>${checklistHtml}</ol></div><div class='info'><h3>${termsTitle}</h3><p>Monthly Price: <b>${Number(role.monthly_price) === 0 ? 'Free' : '$' + role.monthly_price}</b></p><p>${billingNote}</p></div></div></section>`, user));
 });
 
 app.get('/referrals', async (req, res) => {
@@ -216,11 +230,19 @@ app.post('/withdraw', requireAuth, async (req, res) => {
 
 app.get('/admin', requireAuth, async (req, res) => {
   if (!req.user.is_admin) return res.status(403).send('Admin only');
-  const [users, roles, subs, rewards] = await Promise.all([
-    sb('users?select=id'), sb('roles?select=*'), sb('subscriptions?select=id'), sb('rewards?select=id')
+  const [users, roles, subs, rewards, staffingRolePageContent] = await Promise.all([
+    sb('users?select=id'),
+    sb('roles?select=*'),
+    sb('subscriptions?select=id'),
+    sb('rewards?select=id'),
+    one('staffing_role_page_content?key=eq.default&select=*')
   ]);
   const roleRows = roles.map(r => `<tr><td>${r.name}</td><td>${r.monthly_price}</td><td>${r.popular ? 'Yes' : 'No'}</td><td><form method='post' action='/admin/roles/${r.id}/delete'><button class='small danger'>Delete</button></form></td></tr>`).join('');
-  res.send(page('Admin', `<section class='panel'><h2>Admin Control Center</h2><div class='stats'><div><span>Users</span><strong>${users.length}</strong></div><div><span>Subscriptions</span><strong>${subs.length}</strong></div><div><span>Rewards</span><strong>${rewards.length}</strong></div><div><span>Roles</span><strong>${roles.length}</strong></div></div></section><section class='panel'><h3>Add Staffing Role (CMS)</h3><form method='post' action='/admin/roles'><label>Name</label><input name='name' required/><label>Monthly Price</label><input name='monthly_price' type='number'/><label>Capabilities</label><input name='capabilities' required/><label><input type='checkbox' name='popular'/> Mark as popular</label><button>Add role</button></form></section><section class='panel'><h3>Role Catalog</h3><table><tr><th>Name</th><th>Price</th><th>Popular</th><th></th></tr>${roleRows}</table></section>`, req.user));
+  const checklistText = (Array.isArray(staffingRolePageContent?.checklist_items) ? staffingRolePageContent.checklist_items : []).join('\n');
+  res.send(page('Admin', `<section class='panel'><h2>Admin Control Center</h2><div class='stats'><div><span>Users</span><strong>${users.length}</strong></div><div><span>Subscriptions</span><strong>${subs.length}</strong></div><div><span>Rewards</span><strong>${rewards.length}</strong></div><div><span>Roles</span><strong>${roles.length}</strong></div></div></section><section class='panel'><h3>Add Staffing Role (CMS)</h3><form method='post' action='/admin/roles'><label>Name</label><input name='name' required/><label>Monthly Price</label><input name='monthly_price' type='number'/><label>Capabilities</label><input name='capabilities' required/><label><input type='checkbox' name='popular'/> Mark as popular</label><button>Add role</button></form></section><section class='panel'><h3>Staffing Role Detail Page Content (CMS)</h3><form method='post' action='/admin/staffing-role-page-content'><label>Checklist Title</label><input name='checklist_title' value='${staffingRolePageContent?.checklist_title || 'Setup checklist'}' required/><label>Checklist Items (one per line)</label><textarea name='checklist_items' rows='6' required>${checklistText || `Create your Telegram access channel.
+Upload SOP + KPIs in dashboard notes.
+Assign data sources and response guardrails.
+Activate QA review mode for the first 72 hours.`}</textarea><label>Terms Title</label><input name='terms_title' value='${staffingRolePageContent?.terms_title || 'Commercial terms'}' required/><label>Billing Note</label><input name='billing_note' value='${staffingRolePageContent?.billing_note || 'Billing: Demo-only for this environment.'}' required/><button>Save page content</button></form></section><section class='panel'><h3>Role Catalog</h3><table><tr><th>Name</th><th>Price</th><th>Popular</th><th></th></tr>${roleRows}</table></section>`, req.user));
 });
 
 app.post('/admin/roles', requireAuth, async (req, res) => {
@@ -232,6 +254,24 @@ app.post('/admin/roles', requireAuth, async (req, res) => {
 app.post('/admin/roles/:id/delete', requireAuth, async (req, res) => {
   if (!req.user.is_admin) return res.status(403).send('Admin only');
   await sb(`roles?id=eq.${req.params.id}`, { method: 'DELETE', prefer: 'return=minimal' });
+  res.redirect('/admin');
+});
+
+app.post('/admin/staffing-role-page-content', requireAuth, async (req, res) => {
+  if (!req.user.is_admin) return res.status(403).send('Admin only');
+  const checklistItems = parseLines(req.body.checklist_items);
+  await sb('staffing_role_page_content?on_conflict=key', {
+    method: 'POST',
+    prefer: 'resolution=merge-duplicates,return=representation',
+    body: [{
+      key: 'default',
+      checklist_title: req.body.checklist_title,
+      checklist_items: checklistItems,
+      terms_title: req.body.terms_title,
+      billing_note: req.body.billing_note,
+      updated_at: nowISO()
+    }]
+  });
   res.redirect('/admin');
 });
 
