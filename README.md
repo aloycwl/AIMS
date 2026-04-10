@@ -3,7 +3,7 @@ A full suite of agentic employees to power your business.
 
 ## Run (web app)
 ```bash
-npm start
+PORT=3131 npm start
 ```
 
 ## Supabase activation
