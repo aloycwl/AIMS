@@ -31,13 +31,7 @@ export function nav(user, currentPath = '') {
       <svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><line x1='3' y1='12' x2='21' y2='12'></line><line x1='3' y1='6' x2='21' y2='6'></line><line x1='3' y1='18' x2='21' y2='18'></line></svg>
     </button>
     <div class='nav-links'>${navLinks}</div>
-
-    <div class='lang-toggle'>
-      <button onclick="setLang('en')" class="lang-btn active" id="btn-en">EN</button>
-      <button onclick="setLang('zh-CN')" class="lang-btn" id="btn-cn">CN</button>
-    </div>
-    <div id='google_translate_element' style='display:none;'></div>
-
+    <div id='google_translate_element' class='translate-wrapper'></div>
     ${profileMenu}
   </nav>`;
 }
@@ -51,7 +45,6 @@ export function page(title, body, user = null, currentPath = '') {
   </script>
   <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </head><body>${nav(user, currentPath)}<main>${body}</main><footer><p>© AIMS Demo Platform • Built for staged production growth.</p></footer><script>
-
     const toggle = document.querySelector('.menu-toggle');
     const links = document.querySelector('.nav-links');
     if (toggle && links) {
