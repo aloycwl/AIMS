@@ -10,7 +10,102 @@ export class PublicController {
 
   async getHome(req, res) {
     const user = await this.currentUser(req);
-    const html = `<section class='hero'><div><h1>AIMS — AI Management System</h1><p>Production-ready structure for OpenClaw deployment, AI staffing commerce, and referral operations.</p><div class='actions'><a class='btn' href='/deploy'>Launch 1-Click Deploy</a><a class='btn ghost' href='/staffing'>View AI Staffing</a></div></div><img src='https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80' alt='AI server room' /></section><section class='grid feature-grid'><article class='card'><h3>OpenClaw Subscription</h3><p>Fast payment simulation and provisioning telemetry.</p></article><article class='card'><h3>Agent Staffing</h3><p>12 role catalog with CMS-driven expansion.</p></article><article class='card'><h3>Referral Economics</h3><p>50% direct and weighted 20% upline pool.</p></article></section>`;
+    const html = `<section class='hero tech-hero'>
+  <div class='hero-content'>
+    <div class='tech-badge'><span>v2.0 LIVE</span> Next-Gen AI Operations</div>
+    <h1 class='glitch-text' data-text='AIMS'>AIMS</h1>
+    <h2 class='sub-hero'>AI Management System</h2>
+    <p>AIMS is the autonomous command center for your entire workforce. Orchestrate AI agents, scale decentralized operations, and drive hyper-growth through an integrated referral economy.</p>
+
+    <div class='actions hero-actions'>
+      <a class='btn tech-btn pulse-border' href='/deploy'>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Launch OpenClaw Core
+      </a>
+      <a class='btn ghost tech-btn-outline' href='/staffing'>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        Explore AI Staffing
+      </a>
+    </div>
+
+    <div class='tech-stats'>
+      <div class='stat-item'>
+        <strong><span class="counter" data-target="99.99">99.99</span>%</strong>
+        <span>Uptime</span>
+      </div>
+      <div class='stat-item'>
+        <strong><span class="counter" data-target="12">12</span>+</strong>
+        <span>AI Agent Roles</span>
+      </div>
+      <div class='stat-item'>
+        <strong><span class="counter" data-target="50">50</span>%</strong>
+        <span>Direct Reward</span>
+      </div>
+    </div>
+  </div>
+  <div class='hero-visual'>
+    <div class='tech-orb'></div>
+    <div class='tech-grid'></div>
+    <img src='https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80' alt='Global Tech Network' />
+  </div>
+</section>
+
+<section class='tech-section'>
+  <div class='section-header text-center'>
+    <span class='tech-label'>INFRASTRUCTURE</span>
+    <h2>The Command Core</h2>
+    <p class='muted'>Modular architecture designed for unstoppable scaling.</p>
+  </div>
+
+  <div class='grid feature-grid tech-cards'>
+    <article class='card glass-card'>
+      <div class='card-icon blue-glow'>
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      </div>
+      <h3>OpenClaw Deployment</h3>
+      <p>Simulate fast payment cycles and instantly provision your agent telemetry network securely on our decentralized grid.</p>
+    </article>
+
+    <article class='card glass-card'>
+      <div class='card-icon purple-glow'>
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <h3>Autonomous Agent Staffing</h3>
+      <p>Access our 12-role catalog featuring CMS-driven capability updates. Each agent runs on specialized knowledge graphs.</p>
+    </article>
+
+    <article class='card glass-card'>
+      <div class='card-icon green-glow'>
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+      </div>
+      <h3>Referral Economics</h3>
+      <p>Grow via integrated mechanics: 50% direct payout plus a dynamically weighted 20% upline pool to maximize expansion.</p>
+    </article>
+  </div>
+</section>
+
+<script>
+  // Simple counter animation
+  const counters = document.querySelectorAll('.counter');
+  counters.forEach(counter => {
+    const target = parseFloat(counter.getAttribute('data-target'));
+    const isFloat = counter.getAttribute('data-target').includes('.');
+    const duration = 2000;
+    const step = target / (duration / 16);
+    let current = 0;
+
+    const updateCounter = () => {
+      current += step;
+      if (current < target) {
+        counter.innerText = isFloat ? current.toFixed(2) : Math.ceil(current);
+        requestAnimationFrame(updateCounter);
+      } else {
+        counter.innerText = target;
+      }
+    };
+    updateCounter();
+  });
+</script>`;
     res.send(page('AIMS', html, user, req.path));
   }
 
