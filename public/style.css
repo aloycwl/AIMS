@@ -485,20 +485,3 @@ body {
   top: 0px !important;
   position: static !important;
 }
-
-/* Fix Mobile Translate Toggle Interaction */
-.lang-toggle {
-  position: relative;
-  z-index: 1050; /* Ensure it's above other elements */
-  pointer-events: auto;
-}
-
-@media (max-width: 900px) {
-  nav {
-    justify-content: space-between;
-  }
-  .lang-toggle {
-    margin-left: auto;
-    margin-right: 16px;
-  }
-}
