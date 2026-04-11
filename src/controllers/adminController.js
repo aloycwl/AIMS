@@ -58,11 +58,11 @@ Activate QA review mode for the first 72 hours.`}</textarea><label>Terms Title</
       : `<section class='panel'><h3>Staffing Detail Page CMS</h3><p class='muted'>Create at least one role first to manage per-catalog detail page content.</p></section>`;
 
     const html = `<section class='panel'><h2>Admin CMS</h2><p class='muted'>Manage your storefront catalog and staffing detail content from one place.</p><div class='stats'><div><span>Users</span><strong>${users.length}</strong></div><div><span>Subscriptions</span><strong>${subs.length}</strong></div><div><span>Rewards</span><strong>${rewards.length}</strong></div><div><span>Roles</span><strong>${roles.length}</strong></div></div></section>
-      <section class='panel'><h3>Add Staffing Role</h3><form method='post' action='/admin/roles'><label>Name</label><input name='name' required/><label>Monthly Price</label><input name='monthly_price' type='number'/><label>Capabilities</label><input name='capabilities' required/><label><input type='checkbox' name='popular'/> Mark as popular</label><button>Add role</button></form></section>
+      <section class='panel'><h3>Add Staffing Role</h3><form method='post' action='/admin/roles'><label for='role_name'>Name</label><input id='role_name' name='name' placeholder='e.g. Content Creator' required/><label for='role_price'>Monthly Price</label><input id='role_price' name='monthly_price' type='number' placeholder='0'/><label for='role_caps'>Capabilities</label><input id='role_caps' name='capabilities' placeholder='e.g. SEO, Blogging' required/><label><input type='checkbox' name='popular'/> Mark as popular</label><button>Add role</button></form></section>
       ${cmsSection}
       <section class='panel'><h3>Role Catalog Management</h3><table><tr><th>Name</th><th>Price</th><th>Popular</th><th>Actions</th></tr>${roleRows}</table></section>`;
 
-    res.send(page('Admin', html, req.user));
+    res.send(page('Admin', html, req.user, req.path));
   }
 
   async postAddRole(req, res) {

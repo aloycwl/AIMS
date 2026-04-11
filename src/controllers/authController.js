@@ -10,7 +10,7 @@ export class AuthController {
   }
 
   async getRegister(req, res) {
-    res.send(page('Register', `<section class='panel'><h2>Create Account</h2><p>Use any email for test onboarding; verification is intentionally disabled.</p><form method='post'><label>Email</label><input name='email' required/><label>Password</label><input type='password' name='password' required/><label>Referral Code (optional)</label><input name='ref' value='${req.query.ref || ''}'/><button>Create account</button></form></section>`));
+    res.send(page('Register', `<section class='panel narrow'><h2>Create Account</h2><p class='muted'>Use any email for test onboarding; verification is intentionally disabled.</p><form method='post'><label for='email'>Email</label><input id='email' name='email' type='email' placeholder='alex@example.com' required/><label for='password'>Password</label><input id='password' type='password' name='password' placeholder='••••••••' required/><label for='ref'>Referral Code (optional)</label><input id='ref' name='ref' value='${req.query.ref || ''}' placeholder='OPTIONAL'/><button>Create account</button></form><p style='margin-top:20px;text-align:center' class='muted'>Already have an account? <a href='/login'>Sign in</a></p></section>`, null, req.path));
   }
 
   async postRegister(req, res) {
@@ -42,7 +42,7 @@ export class AuthController {
   }
 
   async getLogin(req, res) {
-    res.send(page('Login', `<section class='panel narrow'><h2>Sign in</h2><form method='post'><label>Email</label><input name='email' required/><label>Password</label><input type='password' name='password' required/><button>Login</button></form></section>`));
+    res.send(page('Login', `<section class='panel narrow'><h2>Sign in</h2><form method='post'><label for='email'>Email</label><input id='email' name='email' type='email' placeholder='alex@example.com' required/><label for='password'>Password</label><input id='password' type='password' name='password' placeholder='••••••••' required/><button>Login</button></form><p style='margin-top:20px;text-align:center' class='muted'>Don't have an account? <a href='/register'>Register</a></p></section>`, null, req.path));
   }
 
   async postLogin(req, res) {
@@ -64,7 +64,7 @@ export class AuthController {
 
   async getProfile(req, res) {
     const user = await this.one(`users?id=eq.${req.user.id}&select=*`);
-    res.send(page('Profile', `<section class='panel narrow'><h2>Profile</h2><p><b>Email:</b> ${user.email}</p><p><b>Referral code:</b> ${user.referral_code}</p><p><b>Joined:</b> ${new Date(user.created_at).toLocaleDateString()}</p></section><section class='panel narrow' id='change-password'><h3>Change Password</h3><form method='post' action='/profile/password'><label>Current Password</label><input type='password' name='current_password' required/><label>New Password</label><input type='password' name='new_password' minlength='8' required/><label>Confirm New Password</label><input type='password' name='confirm_password' minlength='8' required/><button>Update Password</button></form></section>`, user));
+    res.send(page('Profile', `<section class='panel narrow'><h2>Profile</h2><p><b>Email:</b> ${user.email}</p><p><b>Referral code:</b> ${user.referral_code}</p><p><b>Joined:</b> ${new Date(user.created_at).toLocaleDateString()}</p></section><section class='panel narrow' id='change-password'><h3>Change Password</h3><form method='post' action='/profile/password'><label for='current_password'>Current Password</label><input id='current_password' type='password' name='current_password' required/><label for='new_password'>New Password</label><input id='new_password' type='password' name='new_password' minlength='8' required/><label for='confirm_password'>Confirm New Password</label><input id='confirm_password' type='password' name='confirm_password' minlength='8' required/><button>Update Password</button></form></section>`, user, req.path));
   }
 
   async postProfilePassword(req, res) {
