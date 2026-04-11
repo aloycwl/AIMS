@@ -130,6 +130,17 @@ export class SubscriptionService {
         await this.sb(`subscriptions?id=eq.${sub.id}`, { method: 'PATCH', body: { status: 'expired' } });
       }
     }
+    const provisioning = await this.sb(`subscriptions?user_id=eq.${userId}&status=eq.provisioning&select=*`);
+    const provisioningPromises = provisioning
+      .filter((sub) => new Date(sub.provision_at) <= new Date())
+      .map((sub) => this.sb(`subscriptions?id=eq.${sub.id}`, { method: 'PATCH', body: { status: 'provisioned', instance_ip: randomIP() } }));
+
+    const provisioned = await this.sb(`subscriptions?user_id=eq.${userId}&status=eq.provisioned&select=*`);
+    const expiredPromises = provisioned
+      .filter((sub) => sub.expires_at && new Date(sub.expires_at) <= new Date())
+      .map((sub) => this.sb(`subscriptions?id=eq.${sub.id}`, { method: 'PATCH', body: { status: 'expired' } }));
+
+    await Promise.all([...provisioningPromises, ...expiredPromises]);
   }
 
   async getSubscriptions(userId) {
