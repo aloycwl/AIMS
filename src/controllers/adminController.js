@@ -84,7 +84,7 @@ Activate QA review mode for the first 72 hours.`}</textarea><label>Terms Title</
   async postUpdateRole(req, res) {
     if (!this.adminOnly(req, res)) return;
 
-    await this.sb(`roles?id=eq.${req.params.id}`, {
+    await this.sb(`roles?id=eq.${encodeURIComponent(req.params.id)}`, {
       method: 'PATCH',
       body: {
         name: req.body.name,
@@ -100,7 +100,7 @@ Activate QA review mode for the first 72 hours.`}</textarea><label>Terms Title</
   async postDeleteRole(req, res) {
     if (!this.adminOnly(req, res)) return;
 
-    await this.sb(`roles?id=eq.${req.params.id}`, { method: 'DELETE', prefer: 'return=minimal' });
+    await this.sb(`roles?id=eq.${encodeURIComponent(req.params.id)}`, { method: 'DELETE', prefer: 'return=minimal' });
     res.redirect('/admin');
   }
 

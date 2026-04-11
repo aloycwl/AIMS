@@ -29,10 +29,10 @@ export class PublicController {
 
   async getStaffingById(req, res) {
     const user = await this.currentUser(req);
-    const role = await this.one(`roles?id=eq.${req.params.id}&select=*`);
+    const role = await this.one(`roles?id=eq.${encodeURIComponent(req.params.id)}&select=*`);
     if (!role) return res.status(404).send('Role not found');
 
-    const cms = await this.one(`staffing_role_page_content?role_id=eq.${req.params.id}&select=*`)
+    const cms = await this.one(`staffing_role_page_content?role_id=eq.${encodeURIComponent(req.params.id)}&select=*`)
       || await this.one('staffing_role_page_content?key=eq.default&select=*');
     const checklistTitle = cms?.checklist_title || 'Setup checklist';
     const checklistItems = Array.isArray(cms?.checklist_items) && cms.checklist_items.length
