@@ -31,56 +31,46 @@ export function nav(user, currentPath = '') {
       <svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><line x1='3' y1='12' x2='21' y2='12'></line><line x1='3' y1='6' x2='21' y2='6'></line><line x1='3' y1='18' x2='21' y2='18'></line></svg>
     </button>
     <div class='nav-links'>${navLinks}</div>
-
-    <div class='lang-toggle'>
-      <button onclick="setLang('en')" class="lang-btn active" id="btn-en">EN</button>
-      <button onclick="setLang('zh-CN')" class="lang-btn" id="btn-cn">CN</button>
-    </div>
-    <div id='google_translate_element' style='display:none;'></div>
-
     ${profileMenu}
   </nav>`;
 }
 
 export function page(title, body, user = null, currentPath = '') {
-  return `<!doctype html><html><head><meta charset='utf-8'/><meta name='viewport' content='width=device-width,initial-scale=1'/><title>${title} | AIMS</title><link rel='stylesheet' href='/static/style.css'>
-  <script type="text/javascript">
+  return `<!doctype html><html><head><meta charset='utf-8'/><meta name='viewport' content='width=device-width,initial-scale=1'/><title>${title} | AIMS</title><link rel='stylesheet' href='/static/style.css'></head><body>${nav(user, currentPath)}<main>${body}</main><footer><p>© AIMS Demo Platform • Built for staged production growth.</p><div class="lang-switch"><a href="javascript:void(0)" onclick="changeLang('en')">EN</a><span>|</span><a href="javascript:void(0)" onclick="changeLang('zh-CN')">CN</a></div><div id="google_translate_element" style="display:none"></div></footer><script>
     function googleTranslateElementInit() {
-      new google.translate.TranslateElement({pageLanguage: 'en', includedLanguages: 'en,zh-CN', layout: google.translate.TranslateElement.InlineLayout.SIMPLE}, 'google_translate_element');
+      new google.translate.TranslateElement({
+        pageLanguage: 'en',
+        includedLanguages: 'en,zh-CN',
+        autoDisplay: false
+      }, 'google_translate_element');
     }
-  </script>
-  <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-</head><body>${nav(user, currentPath)}<main>${body}</main><footer><p>© AIMS Demo Platform • Built for staged production growth.</p></footer><script>
-
+    function changeLang(lang) {
+      const select = document.querySelector('.goog-te-combo');
+      if (select) {
+        select.value = lang;
+        select.dispatchEvent(new Event('change'));
+      }
+    }
+  </script><script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script><script>
     const toggle = document.querySelector('.menu-toggle');
     const links = document.querySelector('.nav-links');
     if (toggle && links) {
       toggle.addEventListener('click', () => {
-        links.classList.toggle('open');
+        const isOpen = links.classList.toggle('open');
+        document.body.classList.toggle('menu-open', isOpen);
       });
     }
-
-    // Custom Translation Logic
-    function setLang(langCode) {
-      // Set the Google Translate cookie
-      const val = '/en/' + langCode;
-      document.cookie = 'googtrans=' + val + '; path=/; domain=' + window.location.hostname;
-      document.cookie = 'googtrans=' + val + '; path=/';
-      // Reload to apply the translation
-      window.location.reload();
+    function copyLink(el) {
+      const text = el.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const original = el.innerText;
+        el.innerText = 'Copied!';
+        el.style.color = 'var(--brand)';
+        setTimeout(() => {
+          el.innerText = original;
+          el.style.color = '';
+        }, 2000);
+      });
     }
-
-    // Check initial language on load
-    window.addEventListener('load', () => {
-      const match = document.cookie.match(/googtrans=\/en\/([^;]+)/);
-      if (match && match[1] === 'zh-CN') {
-        document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
-        document.getElementById('btn-cn').classList.add('active');
-      } else {
-        document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
-        document.getElementById('btn-en').classList.add('active');
-      }
-    });
-
   </script></body></html>`;
 }
