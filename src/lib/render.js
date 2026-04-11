@@ -31,7 +31,13 @@ export function nav(user, currentPath = '') {
       <svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><line x1='3' y1='12' x2='21' y2='12'></line><line x1='3' y1='6' x2='21' y2='6'></line><line x1='3' y1='18' x2='21' y2='18'></line></svg>
     </button>
     <div class='nav-links'>${navLinks}</div>
-    <div id='google_translate_element' class='translate-wrapper'></div>
+
+    <div class='lang-toggle'>
+      <button onclick="setLang('en')" class="lang-btn active" id="btn-en">EN</button>
+      <button onclick="setLang('zh-CN')" class="lang-btn" id="btn-cn">CN</button>
+    </div>
+    <div id='google_translate_element' style='display:none;'></div>
+
     ${profileMenu}
   </nav>`;
 }
@@ -45,6 +51,7 @@ export function page(title, body, user = null, currentPath = '') {
   </script>
   <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </head><body>${nav(user, currentPath)}<main>${body}</main><footer><p>© AIMS Demo Platform • Built for staged production growth.</p></footer><script>
+
     const toggle = document.querySelector('.menu-toggle');
     const links = document.querySelector('.nav-links');
     if (toggle && links) {
@@ -55,31 +62,24 @@ export function page(title, body, user = null, currentPath = '') {
 
     // Custom Translation Logic
     function setLang(langCode) {
-      // Update UI active state
-      document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
-      if(langCode === 'en') {
-        document.getElementById('btn-en').classList.add('active');
-      } else {
-        document.getElementById('btn-cn').classList.add('active');
-      }
-
-      // Find the Google Translate select element
-      const selectField = document.querySelector('.goog-te-combo');
-      if (selectField) {
-        selectField.value = langCode;
-        selectField.dispatchEvent(new Event('change'));
-      }
+      // Set the Google Translate cookie
+      const val = '/en/' + langCode;
+      document.cookie = 'googtrans=' + val + '; path=/; domain=' + window.location.hostname;
+      document.cookie = 'googtrans=' + val + '; path=/';
+      // Reload to apply the translation
+      window.location.reload();
     }
 
     // Check initial language on load
     window.addEventListener('load', () => {
-      setTimeout(() => {
-        const selectField = document.querySelector('.goog-te-combo');
-        if (selectField && selectField.value === 'zh-CN') {
-          document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
-          document.getElementById('btn-cn').classList.add('active');
-        }
-      }, 1000);
+      const match = document.cookie.match(/googtrans=\/en\/([^;]+)/);
+      if (match && match[1] === 'zh-CN') {
+        document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('btn-cn').classList.add('active');
+      } else {
+        document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('btn-en').classList.add('active');
+      }
     });
 
   </script></body></html>`;
