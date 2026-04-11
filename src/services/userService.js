@@ -7,7 +7,7 @@ export class UserService {
   }
 
   async getUserById(userId) {
-    return this.one(`users?id=eq.${userId}&select=*`);
+    return this.one(`users?id=eq.${encodeURIComponent(userId)}&select=*`);
   }
 
   async withdraw(userId, address, amount) {
