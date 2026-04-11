@@ -421,3 +421,52 @@ body {
 .muted a:hover {
   opacity: 0.8;
 }
+
+/* Custom Language Toggle Styles */
+.lang-toggle {
+  display: flex;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-left: 16px;
+}
+
+.lang-btn {
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: none;
+  transition: all 0.2s;
+  border-radius: 0;
+}
+
+.lang-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transform: none;
+  box-shadow: none;
+}
+
+.lang-btn.active {
+  background: var(--brand);
+  color: #fff;
+}
+
+/* Ensure the Google Translate iframe doesn't push the page down */
+body {
+  top: 0px !important;
+}
+.skiptranslate {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .lang-toggle {
+    margin-left: auto;
+  }
+}
