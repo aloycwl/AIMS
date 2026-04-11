@@ -16,8 +16,8 @@ export class PublicController {
   async getDeploy(req, res) {
     const user = await this.currentUser(req);
     const plans = await this.sb('plans?select=*&order=price.asc');
-    const rows = plans.map((p) => `<tr><td>$${p.price}</td><td>${p.label}</td><td>${p.shares}</td><td>+${p.bonus_pct}%</td><td>${p.discount_pct}%</td><td><a class='btn small' href='/pay/${p.price}'>Choose</a></td></tr>`).join('');
-    res.send(page('Deploy', `<section class='panel'><h2>OpenClaw 1-Click Deploy</h2><p>Select a plan to simulate payment and instant provisioning orchestration.</p><table><tr><th>Price</th><th>Duration</th><th>Shares</th><th>Bonus</th><th>Discount</th><th></th></tr>${rows}</table></section>`, user, req.path));
+    const rows = plans.map((p) => `<tr><td>$${p.price}</td><td>${p.label}</td><td>${p.shares}</td><td>+${p.bonus_pct}%</td><td>${p.discount_pct}%</td><td><div class='inline'><a class='btn small' href='/pay/${p.price}?currency=usd'>Pay (USD)</a><a class='btn small ghost' href='/pay/${p.price}?currency=sgd' title='Pay with PayNow (1 USD = 1.27 SGD)'>Pay (SGD)</a></div></td></tr>`).join('');
+    res.send(page('Deploy', `<section class='panel'><h2>OpenClaw 1-Click Deploy</h2><p>Select a plan to simulate payment and instant provisioning orchestration.</p><table><tr><th>Price (USD)</th><th>Duration</th><th>Shares</th><th>Bonus</th><th>Discount</th><th>Action</th></tr>${rows}</table></section>`, user, req.path));
   }
 
   async getStaffing(req, res) {

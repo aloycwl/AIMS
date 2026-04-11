@@ -12,6 +12,8 @@ export class MemberController {
     const plan = await this.subscriptionService.getPlanByPrice(req.params.price);
     if (!plan) return res.status(404).send('Plan not found');
 
+    const currency = req.query.currency || 'usd';
+
     // Instead of showing a form, we now redirect to Stripe Checkout
     try {
       const protocol = req.protocol;
@@ -23,7 +25,8 @@ export class MemberController {
         plan,
         req.user.id,
         successUrl,
-        cancelUrl
+        cancelUrl,
+        currency
       );
 
       res.redirect(303, session.url);
@@ -41,9 +44,16 @@ export class MemberController {
       const session = await this.stripeService.retrieveSession(session_id);
       if (session.payment_status === 'paid') {
         const userId = session.metadata.userId;
+        const planId = session.metadata.planId;
         const planPrice = session.metadata.planPrice;
 
-        const plan = await this.subscriptionService.getPlanByPrice(planPrice);
+        let plan;
+        if (planId) {
+          plan = await this.subscriptionService.getPlanById(planId);
+        } else {
+          plan = await this.subscriptionService.getPlanByPrice(planPrice);
+        }
+
         if (plan) {
           await this.subscriptionService.processSubscription(userId, plan);
         }
