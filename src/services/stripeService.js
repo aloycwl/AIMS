@@ -2,7 +2,8 @@ import Stripe from 'stripe';
 
 export class StripeService {
   constructor(secretKey) {
-    this.stripe = new Stripe(secretKey);
+    this._secretKey = secretKey;
+    this._stripe = null;
   }
 
   async createCheckoutSession(plan, userId, successUrl, cancelUrl, currency = 'usd') {

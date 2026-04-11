@@ -1,5 +1,12 @@
 import { page } from '../lib/render.js';
 import { nowISO } from '../lib/utils.js';
+import { OAuth2Client } from 'google-auth-library';
+import crypto from 'crypto';
+import nodemailer from 'nodemailer';
+
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI || '/auth/google/callback');
+
 
 export class AuthController {
   constructor(sb, one, login, logout) {
@@ -41,6 +48,93 @@ export class AuthController {
     }
   }
 
+
+  async getForgotPassword(req, res) {
+    res.send(page('Forgot Password', `<section class='panel narrow'><h2>Reset Password</h2><p class='muted'>Enter your email and we'll send you a link to reset your password.</p><form method='post'><label for='email'>Email</label><input id='email' name='email' type='email' placeholder='alex@example.com' required/><button>Send Reset Link</button></form><p style='margin-top:20px;text-align:center' class='muted'><a href='/login'>Back to Login</a></p></section>`, null, req.path));
+  }
+
+  async postForgotPassword(req, res) {
+    try {
+      const email = req.body.email;
+      const user = await this.one(`users?email=eq.${encodeURIComponent(email)}&select=*`);
+
+      if (user) {
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetTokenExpires = new Date(Date.now() + 3600000).toISOString(); // 1 hour
+
+        await this.sb(`users?id=eq.${user.id}`, {
+          method: 'PATCH',
+          body: {
+            reset_token: resetToken,
+            reset_token_expires: resetTokenExpires
+          }
+        });
+
+        // Send Email
+        const transporter = nodemailer.createTransport({
+          host: "localhost",
+          port: 25,
+          secure: false,
+          tls: { rejectUnauthorized: false }
+        });
+
+        const resetLink = `${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`;
+
+        try {
+          await transporter.sendMail({
+            from: '"AIMS" <no-reply@aims.test>',
+            to: email,
+            subject: 'Password Reset',
+            text: `Click the following link to reset your password: ${resetLink}`,
+            html: `<p>Click the following link to reset your password:</p><p><a href="${resetLink}">${resetLink}</a></p>`
+          });
+        } catch (mailErr) {
+          console.error("Mail sending failed, likely no local SMTP server. Token is:", resetToken);
+        }
+      }
+
+      res.send(page('Forgot Password', `<section class='panel narrow'><h2>Check your email</h2><p>If an account with that email exists, we have sent a password reset link.</p><a class='btn' href='/login'>Return to Login</a></section>`, null, req.path));
+    } catch (e) {
+      res.status(500).send(e.message);
+    }
+  }
+
+  async getResetPassword(req, res) {
+    const token = req.query.token;
+    if (!token) return res.redirect('/login');
+
+    res.send(page('Reset Password', `<section class='panel narrow'><h2>Set New Password</h2><form method='post'><input type='hidden' name='token' value='${token}'/><label for='password'>New Password</label><input id='password' type='password' name='password' placeholder='••••••••' minlength='8' required/><button>Reset Password</button></form></section>`, null, req.path));
+  }
+
+  async postResetPassword(req, res) {
+    try {
+      const { token, password } = req.body;
+      if (!token || !password) return res.redirect('/login');
+
+      // Due to the nature of PostgREST, finding by token and checking expiry in one step might be tricky with standard operators without complex queries.
+      // Fetching by token first, then checking JS-side is simpler.
+      const users = await this.sb(`users?reset_token=eq.${encodeURIComponent(token)}&select=*`);
+      const user = users[0];
+
+      if (!user || new Date(user.reset_token_expires) < new Date()) {
+        return res.send(page('Reset Password', `<section class='panel narrow'><h2>Invalid or expired token</h2><p>Please request a new password reset link.</p><a class='btn' href='/forgot-password'>Try again</a></section>`, null, req.path));
+      }
+
+      await this.sb(`users?id=eq.${user.id}`, {
+        method: 'PATCH',
+        body: {
+          password: password,
+          reset_token: null,
+          reset_token_expires: null
+        }
+      });
+
+      res.send(page('Reset Password', `<section class='panel narrow'><h2>Password Reset Successful</h2><p>You can now log in with your new password.</p><a class='btn' href='/login'>Go to Login</a></section>`, null, req.path));
+    } catch (e) {
+      res.status(500).send(e.message);
+    }
+  }
+
   async getLogin(req, res) {
     res.send(page('Login', `<section class='panel narrow'><h2>Sign in</h2><form method='post'><label for='email'>Email</label><input id='email' name='email' type='email' placeholder='alex@example.com' required/><label for='password'>Password</label><input id='password' type='password' name='password' placeholder='••••••••' required/><button>Login</button></form><p style='margin-top:20px;text-align:center' class='muted'>Don't have an account? <a href='/register'>Register</a></p></section>`, null, req.path));
   }
@@ -54,6 +148,80 @@ export class AuthController {
       res.redirect('/dashboard');
     } catch (e) {
       res.status(500).send(e.message);
+    }
+  }
+
+
+  async getGoogleAuth(req, res) {
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.get('host');
+    let actualProtocol = protocol;
+    if (host.includes('replit.app') || host.includes('replit.dev')) {
+      actualProtocol = 'https';
+    }
+    const redirectUri = `${actualProtocol}://${host}/auth/google/callback`;
+    const authorizeUrl = googleClient.generateAuthUrl({
+      access_type: 'offline',
+      scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+      redirect_uri: redirectUri
+    });
+    res.redirect(authorizeUrl);
+  }
+
+  async getGoogleAuthCallback(req, res) {
+    try {
+      const code = req.query.code;
+      if (!code) throw new Error('No code provided');
+
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.get('host');
+      let actualProtocol = protocol;
+    if (host.includes('replit.app') || host.includes('replit.dev')) {
+      actualProtocol = 'https';
+    }
+    const redirectUri = `${actualProtocol}://${host}/auth/google/callback`;
+
+      const { tokens } = await googleClient.getToken({ code, redirect_uri: redirectUri });
+      googleClient.setCredentials(tokens);
+
+      const ticket = await googleClient.verifyIdToken({
+        idToken: tokens.id_token,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      const email = payload.email;
+
+      let user = await this.one(`users?email=eq.${encodeURIComponent(email)}&select=*`);
+
+      if (!user) {
+        // Create new user
+        const referralCode = `${email.split('@')[0].slice(0, 6).toUpperCase()}${Math.floor(Math.random() * 9999)}`;
+        const password = crypto.randomBytes(16).toString('hex'); // Random password
+
+        await this.sb('users', {
+          method: 'POST',
+          body: [{
+            email,
+            password,
+            referral_code: referralCode,
+            referred_by: req.query.state || null, // Optional if we pass ref via state
+            is_admin: false,
+            total_subscribed: 0,
+            total_earned: 0,
+            share_balance: 0,
+            wallet_usdt: 0,
+            openclaw_ends_at: nowISO()
+          }]
+        });
+
+        user = await this.one(`users?email=eq.${encodeURIComponent(email)}&select=*`);
+      }
+
+      this.login(res, user);
+      res.redirect('/dashboard');
+    } catch (e) {
+      console.error('Google Auth Error:', e);
+      res.send(page('Login Failed', `<section class='panel narrow'><h2>Authentication failed</h2><p>${e.message}</p><a class='btn' href='/login'>Try again</a></section>`, null, req.path));
     }
   }
 

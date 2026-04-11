@@ -50,7 +50,7 @@ export class SubscriptionService {
   }
 
   async processSubscription(userId, plan) {
-    const buyer = await this.one(`users?id=eq.${userId}&select=*`);
+    const buyer = await this.one(`users?id=eq.${encodeURIComponent(userId)}&select=*`);
     const restartingAfterCap = !eligible(buyer);
     const grantedShares = calcShares(plan);
     const totalSubscribed = Number(buyer.total_subscribed) + Number(plan.price);
@@ -119,29 +119,28 @@ export class SubscriptionService {
 
   async updateSubscriptionStatuses(userId) {
     const provisioning = await this.sb(`subscriptions?user_id=eq.${userId}&status=eq.provisioning&select=*`);
-    for (const sub of provisioning) {
-      if (new Date(sub.provision_at) <= new Date()) {
-        await this.sb(`subscriptions?id=eq.${sub.id}`, { method: 'PATCH', body: { status: 'provisioned', instance_ip: randomIP() } });
-      }
-    }
+    const provisioningPromises = provisioning
+      .filter((sub) => new Date(sub.provision_at) <= new Date())
+      .map((sub) => this.sb(`subscriptions?id=eq.${sub.id}`, { method: 'PATCH', body: { status: 'provisioned', instance_ip: randomIP() } }));
+
     const provisioned = await this.sb(`subscriptions?user_id=eq.${userId}&status=eq.provisioned&select=*`);
-    for (const sub of provisioned) {
-      if (sub.expires_at && new Date(sub.expires_at) <= new Date()) {
-        await this.sb(`subscriptions?id=eq.${sub.id}`, { method: 'PATCH', body: { status: 'expired' } });
-      }
-    }
+    const expiredPromises = provisioned
+      .filter((sub) => sub.expires_at && new Date(sub.expires_at) <= new Date())
+      .map((sub) => this.sb(`subscriptions?id=eq.${sub.id}`, { method: 'PATCH', body: { status: 'expired' } }));
+
+    await Promise.all([...provisioningPromises, ...expiredPromises]);
   }
 
   async getSubscriptions(userId) {
-    return this.sb(`subscriptions?user_id=eq.${userId}&select=*,plans(label)&order=created_at.desc`);
+    return this.sb(`subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=*,plans(label)&order=created_at.desc`);
   }
 
   async getRewards(userId, limit = 12) {
-    return this.sb(`rewards?user_id=eq.${userId}&select=*&order=created_at.desc&limit=${limit}`);
+    return this.sb(`rewards?user_id=eq.${encodeURIComponent(userId)}&select=*&order=created_at.desc&limit=${limit}`);
   }
 
   async updateTelegramId(subscriptionId, userId, telegramId) {
-    return this.sb(`subscriptions?id=eq.${subscriptionId}&user_id=eq.${userId}`, {
+    return this.sb(`subscriptions?id=eq.${encodeURIComponent(subscriptionId)}&user_id=eq.${encodeURIComponent(userId)}`, {
       method: 'PATCH',
       body: { telegram_id: telegramId }
     });

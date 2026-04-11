@@ -7,11 +7,13 @@ export class PublicController {
     this.currentUser = currentUser;
   }
 
+
   async getHome(req, res) {
     const user = await this.currentUser(req);
     const html = `<section class='hero'><div><h1>AIMS — AI Management System</h1><p>Production-ready structure for OpenClaw deployment, AI staffing commerce, and referral operations.</p><div class='actions'><a class='btn' href='/deploy'>Launch 1-Click Deploy</a><a class='btn ghost' href='/staffing'>View AI Staffing</a></div></div><img src='https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80' alt='AI server room' /></section><section class='grid feature-grid'><article class='card'><h3>OpenClaw Subscription</h3><p>Fast payment simulation and provisioning telemetry.</p></article><article class='card'><h3>Agent Staffing</h3><p>12 role catalog with CMS-driven expansion.</p></article><article class='card'><h3>Referral Economics</h3><p>50% direct and weighted 20% upline pool.</p></article></section>`;
     res.send(page('AIMS', html, user, req.path));
   }
+
 
   async getDeploy(req, res) {
     const user = await this.currentUser(req);
@@ -29,10 +31,10 @@ export class PublicController {
 
   async getStaffingById(req, res) {
     const user = await this.currentUser(req);
-    const role = await this.one(`roles?id=eq.${req.params.id}&select=*`);
+    const role = await this.one(`roles?id=eq.${encodeURIComponent(req.params.id)}&select=*`);
     if (!role) return res.status(404).send('Role not found');
 
-    const cms = await this.one(`staffing_role_page_content?role_id=eq.${req.params.id}&select=*`)
+    const cms = await this.one(`staffing_role_page_content?role_id=eq.${encodeURIComponent(req.params.id)}&select=*`)
       || await this.one('staffing_role_page_content?key=eq.default&select=*');
     const checklistTitle = cms?.checklist_title || 'Setup checklist';
     const checklistItems = Array.isArray(cms?.checklist_items) && cms.checklist_items.length
