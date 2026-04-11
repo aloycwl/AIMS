@@ -177,9 +177,13 @@ export class AuthController {
 
 
   async getGoogleAuth(req, res) {
-    const protocol = req.protocol;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const host = req.get('host');
-    const redirectUri = `${protocol}://${host}/auth/google/callback`;
+    let actualProtocol = protocol;
+    if (host.includes('replit.app') || host.includes('replit.dev')) {
+      actualProtocol = 'https';
+    }
+    const redirectUri = `${actualProtocol}://${host}/auth/google/callback`;
     const authorizeUrl = googleClient.generateAuthUrl({
       access_type: 'offline',
       scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
@@ -193,9 +197,13 @@ export class AuthController {
       const code = req.query.code;
       if (!code) throw new Error('No code provided');
 
-      const protocol = req.protocol;
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
       const host = req.get('host');
-      const redirectUri = `${protocol}://${host}/auth/google/callback`;
+      let actualProtocol = protocol;
+    if (host.includes('replit.app') || host.includes('replit.dev')) {
+      actualProtocol = 'https';
+    }
+    const redirectUri = `${actualProtocol}://${host}/auth/google/callback`;
 
       const { tokens } = await googleClient.getToken({ code, redirect_uri: redirectUri });
       googleClient.setCredentials(tokens);

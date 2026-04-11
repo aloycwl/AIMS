@@ -379,3 +379,15 @@ body {
   .hero-actions { justify-content: center; }
   .tech-stats { justify-content: center; }
 }
+
+/* Better contrast for links in muted text */
+.muted a {
+  color: var(--brand);
+  text-decoration: none;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+
+.muted a:hover {
+  opacity: 0.8;
+}
