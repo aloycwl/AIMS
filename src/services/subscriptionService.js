@@ -10,6 +10,10 @@ export class SubscriptionService {
     return this.one(`plans?price=eq.${Number(price)}&select=*`);
   }
 
+  async getPlanById(id) {
+    return this.one(`plans?id=eq.${id}&select=*`);
+  }
+
   async getUplineChain(user) {
     const chain = [];
     let current = user;
