@@ -52,5 +52,35 @@ export function page(title, body, user = null, currentPath = '') {
         links.classList.toggle('open');
       });
     }
+
+    // Custom Translation Logic
+    function setLang(langCode) {
+      // Update UI active state
+      document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+      if(langCode === 'en') {
+        document.getElementById('btn-en').classList.add('active');
+      } else {
+        document.getElementById('btn-cn').classList.add('active');
+      }
+
+      // Find the Google Translate select element
+      const selectField = document.querySelector('.goog-te-combo');
+      if (selectField) {
+        selectField.value = langCode;
+        selectField.dispatchEvent(new Event('change'));
+      }
+    }
+
+    // Check initial language on load
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const selectField = document.querySelector('.goog-te-combo');
+        if (selectField && selectField.value === 'zh-CN') {
+          document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+          document.getElementById('btn-cn').classList.add('active');
+        }
+      }, 1000);
+    });
+
   </script></body></html>`;
 }
