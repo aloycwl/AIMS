@@ -74,7 +74,7 @@ export function page(title, body, user = null, currentPath = '') {
     }
 
     // Custom Translation Logic
-    function setLang(langCode) {
+    window.setLang = function(langCode) {
       // Set the Google Translate cookie
       const val = '/en/' + langCode;
       document.cookie = 'googtrans=' + val + '; path=/; domain=' + window.location.hostname;
