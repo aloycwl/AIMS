@@ -36,33 +36,12 @@ export function nav(user, currentPath = '') {
 }
 
 export function page(title, body, user = null, currentPath = '') {
-  return `<!doctype html><html><head><meta charset='utf-8'/><meta name='viewport' content='width=device-width,initial-scale=1'/><title>${title} | AIMS</title><link rel='stylesheet' href='/static/style.css'></head><body>${nav(user, currentPath)}<main>${body}</main><footer><p>© AIMS Demo Platform • Built for staged production growth.</p><div id="google_translate_element"></div></footer><script>
-    function googleTranslateElementInit() {
-      new google.translate.TranslateElement({
-        pageLanguage: 'en',
-        includedLanguages: 'en,zh-CN',
-        layout: google.translate.TranslateElement.InlineLayout.SIMPLE
-      }, 'google_translate_element');
-    }
-  </script><script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script><script>
+  return `<!doctype html><html><head><meta charset='utf-8'/><meta name='viewport' content='width=device-width,initial-scale=1'/><title>${title} | AIMS</title><link rel='stylesheet' href='/static/style.css'></head><body>${nav(user, currentPath)}<main>${body}</main><footer><p>© AIMS Demo Platform • Built for staged production growth.</p></footer><script>
     const toggle = document.querySelector('.menu-toggle');
     const links = document.querySelector('.nav-links');
     if (toggle && links) {
       toggle.addEventListener('click', () => {
-        const isOpen = links.classList.toggle('open');
-        document.body.classList.toggle('menu-open', isOpen);
-      });
-    }
-    function copyLink(el) {
-      const text = el.innerText;
-      navigator.clipboard.writeText(text).then(() => {
-        const original = el.innerText;
-        el.innerText = 'Copied!';
-        el.style.color = 'var(--brand)';
-        setTimeout(() => {
-          el.innerText = original;
-          el.style.color = '';
-        }, 2000);
+        links.classList.toggle('open');
       });
     }
   </script></body></html>`;

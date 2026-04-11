@@ -2,7 +2,16 @@ import Stripe from 'stripe';
 
 export class StripeService {
   constructor(secretKey) {
-    this.stripe = new Stripe(secretKey);
+    this._secretKey = secretKey;
+    this._stripe = null;
+  }
+
+  get stripe() {
+    if (!this._stripe) {
+      if (!this._secretKey) throw new Error('STRIPE_SECRET_KEY is not configured.');
+      this._stripe = new Stripe(this._secretKey);
+    }
+    return this._stripe;
   }
 
   async createCheckoutSession(plan, userId, successUrl, cancelUrl, currency = 'usd') {

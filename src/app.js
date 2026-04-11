@@ -30,5 +30,5 @@ registerAdminRoutes(app, ctx);
 
 app.use(errorHandler);
 
-const port = process.env.PORT || 3131;
-app.listen(port, () => console.log(`AIMS app running on http://localhost:${port}`));
+const port = process.env.PORT || 5000;
+app.listen(port, '0.0.0.0', () => console.log(`AIMS app running on http://localhost:${port}`));
