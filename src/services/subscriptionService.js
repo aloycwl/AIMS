@@ -11,7 +11,7 @@ export class SubscriptionService {
   }
 
   async getPlanById(id) {
-    return this.one(`plans?id=eq.${id}&select=*`);
+    return this.one(`plans?id=eq.${encodeURIComponent(id)}&select=*`);
   }
 
   async getUplineChain(user) {

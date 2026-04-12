@@ -56,20 +56,7 @@ export function page(title, body, user = null, currentPath = '') {
     const links = document.querySelector('.nav-links');
     if (toggle && links) {
       toggle.addEventListener('click', () => {
-        const isOpen = links.classList.toggle('open');
-        document.body.classList.toggle('menu-open', isOpen);
-      });
-    }
-    function copyLink(el) {
-      const text = el.innerText;
-      navigator.clipboard.writeText(text).then(() => {
-        const original = el.innerText;
-        el.innerText = 'Copied!';
-        el.style.color = 'var(--brand)';
-        setTimeout(() => {
-          el.innerText = original;
-          el.style.color = '';
-        }, 2000);
+        links.classList.toggle('open');
       });
     }
 

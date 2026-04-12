@@ -6,6 +6,14 @@ export class StripeService {
     this._stripe = null;
   }
 
+  get stripe() {
+    if (!this._stripe) {
+      if (!this._secretKey) throw new Error('STRIPE_SECRET_KEY is not configured.');
+      this._stripe = new Stripe(this._secretKey);
+    }
+    return this._stripe;
+  }
+
   async createCheckoutSession(plan, userId, successUrl, cancelUrl, currency = 'usd') {
     const isSgd = currency.toLowerCase() === 'sgd';
     const amount = isSgd ? Math.round(plan.price * 1.27 * 100) : Math.round(plan.price * 100);
